@@ -241,6 +241,45 @@ public class NTag21x {
         }
         eventListener.OnSuccess(NTagEventListener.ON_WRITE_SUCCESS, NTagEventListener.WRITE);
     }
+    
+    /**
+     *Write nTag URL Message to a tag, it shares the write_success event
+     *@param pages <url to write in bytes>
+     *@param eventListener @see {@link NTagEventListener}
+     */
+     public void writeURL(byte [] pages, NTagEventListener eventListener){
+        if (pages.length / 4 > PAGE_USER_END - PAGE_USER_START + 1) {
+            eventListener.OnError(NTagEventListener.ERROR_MAX_CAPACITY_MSG,
+                    NTagEventListener.ERROR_MAX_CAPACITY);
+            return;
+        }
+        byte [] urlheader = new byte[]{0x03, 0x1A, (byte)0xD1, 0x01, 0x16, 0x55, 0x03};
+        byte [] pages1 = new byte [url.length + pages.length];
+        System.arraycopy(urlheader, 0, pages1, 0, urlheader.length);
+        System.arraycopy(pages, 0, pages1, urlheader.length,pages.length);
+        formatMemory(eventListener);
+        int len = pages1.length;
+        while (len % 4 != 0) {
+            len += 1;
+        }
+        byte[] copy = new byte[len];
+        int i = 0;
+        for (byte b : pages1) {
+            copy[i] = b;
+            i += 1;
+        }
+        while (i < len) {
+            copy[i] = (byte) 0x00;
+            i += 1;
+        }
+        byte currentPage = PAGE_USER_START;
+        for (int j = 0; j < len; j += 4) {
+            byte[] curr = Arrays.copyOfRange(copy, j, j + 4);
+            writeMemoryPage(curr, currentPage, eventListener);
+            currentPage += (byte) 0x01;
+        }
+        eventListener.OnSuccess(NTagEventListener.ON_WRITE_SUCCESS, NTagEventListener.WRITE);
+    }
 
     /**
      * If the message is larger than space available, it truncates and writes
